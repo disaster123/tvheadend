@@ -2898,17 +2898,38 @@ htsp_method_file_read(htsp_connection_t *htsp, htsmsg_t *in)
     goto error;
   }
 
-  int r = read(fd, m, size);
+
+  char *p = m;
+  size_t total_read = 0;
+  size_t total_left = size;  /* The total size of the buffer */
+  int r = 0;
+  while (total_left > 0) {
+    r = read(fd, p, total_left);
+    if (r <= 0) {
+      if (r == 0)
+        break;
+      if (r == -1 && errno == EINTR)
+        continue;
+      if (r == -1 && errno == EAGAIN)
+        continue;
+
+      break;
+    }
+    total_read += r;     /* We have read some more data */
+    total_left -= r;     /* Less data left to read */
+    p += r; /* So we don't read over already read data */
+  }
+
   if(r < 0) {
     free(m);
     e = N_("Read error");
     goto error;
   }
 
-  htsp_file_update_stats(hf, r);
+  htsp_file_update_stats(hf, total_read);
 
   rep = htsmsg_create_map();
-  htsmsg_add_bin_alloc(rep, "data", m, r);
+  htsmsg_add_bin_alloc(rep, "data", m, total_read);
 
 error:
   tvh_mutex_lock(&global_lock);
