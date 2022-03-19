@@ -2920,6 +2920,14 @@ htsp_method_file_read(htsp_connection_t *htsp, htsmsg_t *in)
     p += r; /* So we don't read over already read data */
   }
 
+  if (tvhtrace_enabled()) {
+    char buf[64];
+    size_t l = 0;
+    tvh_strlcatf(buf, sizeof(buf), l, "read %lu", total_read);
+    tvh_strlcatf(buf, sizeof(buf), l, " r: %d", r);
+    htsp_trace(htsp, LS_HTSP_ANS, buf, in);
+  }
+
   if(r < 0) {
     free(m);
     e = N_("Read error");
